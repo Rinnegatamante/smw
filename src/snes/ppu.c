@@ -81,13 +81,13 @@ void ppu_handleVblank(Ppu* ppu) {
   ppu->frameInterlace = PPU_interlace(ppu); // set if we have a interlaced frame
 }
 
-static inline void ClearBackdrop(PpuPixelPrioBufs *buf) {
+static inline __attribute__((always_inline)) void ClearBackdrop(PpuPixelPrioBufs *buf) {
   for (size_t i = 0; i != arraysize(buf->data); i++) {
     buf->data[i] = 0x0500;
   }
 }
 
-inline void ppu_runLine(Ppu* ppu, int line) {
+inline __attribute__((always_inline)) void ppu_runLine(Ppu* ppu, int line) {
   if(line == 0) {
     if (PPU_mosaicSize(ppu) != ppu->lastMosaicModulo) {
       int mod = PPU_mosaicSize(ppu);
@@ -660,7 +660,7 @@ static void PpuDrawBackgrounds(Ppu *ppu, int y, bool sub) {
   }
 }
 
-static NOINLINE void PpuDrawWholeLine(Ppu *ppu, uint y) {
+static inline __attribute__((always_inline)) void PpuDrawWholeLine(Ppu *ppu, uint y) {
   if (PPU_forcedBlank(ppu)) {
     uint8 *dst = &ppu->renderBuffer[(y - 1) * ppu->renderPitch];
     size_t n = sizeof(uint32) * (256 + ppu->extraLeftRight * 2);
@@ -946,7 +946,7 @@ inline uint8_t ppu_read(Ppu* ppu, uint8_t adr) {
   }
 }
 
-inline void ppu_write(Ppu* ppu, uint8_t adr, uint8_t val) {
+inline __attribute__((always_inline)) void ppu_write(Ppu* ppu, uint8_t adr, uint8_t val) {
 //  if (adr != 24 && adr != 25)
 //    printf("ppu_write(%d, %d)\n", adr, val);
   switch(adr) {

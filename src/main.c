@@ -89,7 +89,12 @@ bool g_other_image = true;
 struct SpcPlayer *g_spc_player;
 
 static uint8_t g_pixels[256 * 4 * 240];
+#ifndef __vita__
 static uint8_t g_my_pixels[256 * 4 * 240];
+#else
+static uint8_t *g_my_pixels;
+vita2d_texture *g_tex;
+#endif
 
 int g_got_mismatch_count;
 
@@ -213,10 +218,11 @@ static SDL_HitTestResult HitTestCallback(SDL_Window *win, const SDL_Point *pt, v
 
 void RtlDrawPpuFrame(uint8 *pixel_buffer, size_t pitch, uint32 render_flags) {
   g_rtl_game_info->draw_ppu_frame();
-  
+#ifndef __vita__  
   uint8 *ppu_pixels = g_other_image ? g_my_pixels : g_pixels;
   for (size_t y = 0, y_end = g_snes_height; y < y_end; y++)
-    memcpy((uint8 *)pixel_buffer + y * pitch, ppu_pixels + y * 256 * 4, 256 * 4);
+    memcpy((uint8 *)pixel_buffer + y * pitch, ppu_pixels + y * 256 * 4, 256 * 4)
+#endif
 }
 
 static void DrawPpuFrameWithPerf(void) {
@@ -299,9 +305,6 @@ static int tex_idx = 0;
 static bool Vita2DRenderer_Init(struct SDL_Window *window) {
   vita2d_init();
   vita2d_texture_set_alloc_memblock_type(SCE_KERNEL_MEMBLOCK_TYPE_USER_RW);
-  for (int i = 0; i < 4; i++) {
-    tex_buffers[i] = vita2d_create_empty_texture_format(g_snes_width, g_snes_height, SCE_GXM_TEXTURE_FORMAT_X8U8U8U8_1RGB);
-  }
   return true;
 }
 
@@ -309,15 +312,14 @@ static void Vita2DRenderer_Destroy(void) {
 }
 
 static void Vita2DRenderer_BeginDraw(int width, int height, uint8 **pixels, int *pitch) {
-  tex_buffer = tex_buffers[tex_idx];
-  *pixels = vita2d_texture_get_datap(tex_buffer);
-  *pitch = vita2d_texture_get_stride(tex_buffer);
-  tex_idx = (tex_idx + 1) % 4;
 }
 
 static void Vita2DRenderer_EndDraw(void) {
   vita2d_start_drawing();
-  vita2d_draw_texture_scale(tex_buffer, 0, 0, 960.0f / (float)g_snes_width, 544.0f / (float)g_snes_height);
+  if (g_config.ignore_aspect_ratio)
+	vita2d_draw_texture_scale(g_tex, 0, 0, 960.0f / (float)g_snes_width, 544.0f / (float)g_snes_height);
+  else
+	vita2d_draw_texture_scale(g_tex, 170, 0, 2.42857f, 2.42857f);
   vita2d_end_drawing();
   //vita2d_wait_rendering_done();
   vita2d_swap_buffers();
@@ -555,6 +557,10 @@ error_reading:;
     g_audiobuffer = (uint8 *)calloc(g_frames_per_block * have.channels * sizeof(int16), 1);
   }
 
+#ifdef __vita__
+  g_tex = vita2d_create_empty_texture_format(256, 240, SCE_GXM_TEXTURE_FORMAT_X8U8U8U8_1RGB);
+  g_my_pixels = vita2d_texture_get_datap(g_tex);
+#endif
   PpuBeginDrawing(g_snes->ppu, g_pixels, 256 * 4, 0);
   PpuBeginDrawing(g_my_ppu, g_my_pixels, 256 * 4, 0);
 
