@@ -1,4 +1,5 @@
 // This file is heavily influenced by Snes9x
+#ifndef __vita__
 #include "third_party/gl_core/gl_core_3_1.h"
 #include "glsl_shader.h"
 #include "util.h"
@@ -614,4 +615,4 @@ void GlslShader_Render(GlslShader *gs, GlTextureWithSize *tex, int viewport_x, i
 
   gs->frame_count++;
 }
-
+#endif

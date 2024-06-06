@@ -1,3 +1,4 @@
+#ifndef __vita__
 #include "third_party/gl_core/gl_core_3_1.h"
 #include <SDL.h>
 #include <stdio.h>
@@ -217,4 +218,4 @@ void OpenGLRenderer_Create(struct RendererFuncs *funcs) {
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
   *funcs = kOpenGLRendererFuncs;
 }
-
+#endif

@@ -31,7 +31,11 @@ void ppu_free(Ppu* ppu) {
 void ppu_copy(Ppu *ppu, Ppu *ppu_src) {
   size_t pitch = ppu->renderPitch;
   uint8_t *renderBuffer = ppu->renderBuffer;
+#ifdef __vita__
+  sceClibMemcpy(ppu, ppu_src, sizeof(*ppu));
+#else
   memcpy(ppu, ppu_src, sizeof(*ppu));
+#endif
   ppu->renderBuffer = renderBuffer;
   ppu->renderPitch = (uint32_t)pitch;
 }
@@ -78,11 +82,12 @@ void ppu_handleVblank(Ppu* ppu) {
 }
 
 static inline void ClearBackdrop(PpuPixelPrioBufs *buf) {
-  for (size_t i = 0; i != arraysize(buf->data); i += 4)
-    *(uint64*)&buf->data[i] = 0x0500050005000500;
+  for (size_t i = 0; i != arraysize(buf->data); i++) {
+    buf->data[i] = 0x0500;
+  }
 }
 
-void ppu_runLine(Ppu* ppu, int line) {
+inline void ppu_runLine(Ppu* ppu, int line) {
   if(line == 0) {
     if (PPU_mosaicSize(ppu) != ppu->lastMosaicModulo) {
       int mod = PPU_mosaicSize(ppu);
@@ -842,7 +847,7 @@ static uint16_t ppu_getVramRemap(Ppu* ppu) {
   return adr;
 }
 
-uint8_t ppu_read(Ppu* ppu, uint8_t adr) {
+inline uint8_t ppu_read(Ppu* ppu, uint8_t adr) {
   switch(adr) {
   case 0x34:
   case 0x35:
@@ -941,7 +946,7 @@ uint8_t ppu_read(Ppu* ppu, uint8_t adr) {
   }
 }
 
-void ppu_write(Ppu* ppu, uint8_t adr, uint8_t val) {
+inline void ppu_write(Ppu* ppu, uint8_t adr, uint8_t val) {
 //  if (adr != 24 && adr != 25)
 //    printf("ppu_write(%d, %d)\n", adr, val);
   switch(adr) {

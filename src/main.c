@@ -13,6 +13,11 @@
 #include <unistd.h>
 #endif
 
+#ifdef __vita__
+#include <vitasdk.h>
+#include <vita2d.h>
+#endif
+
 #include "assets/smw_assets.h"
 
 #include "snes/ppu.h"
@@ -30,6 +35,28 @@
 #endif
 
 #include "assets/smw_assets.h"
+
+#ifdef __vita__
+long sysconf(int name) {
+	return 0;
+}
+
+int _newlib_heap_size_user = 128 * 1024 * 1024;
+
+int __wrap_mkdir(const char *fname, mode_t mode) {
+	printf("mkdir %s\n", fname);
+	char patched_fname[256];
+	sprintf(patched_fname, "ux0:data/smworld/%s", fname);
+	return __real_mkdir(patched_fname, mode);
+}
+
+FILE *__wrap_fopen(char *fname, char *mode) {
+	printf("fopen %s\n", fname);
+	char patched_fname[256];
+	sprintf(patched_fname, "ux0:data/smworld/%s", fname);
+	return __real_fopen(patched_fname, mode);
+}
+#endif
 
 typedef struct GamepadInfo {
   uint32 modifiers;
@@ -93,14 +120,22 @@ static GamepadInfo g_gamepad[2];
 extern Snes *g_snes;
 
 void NORETURN Die(const char *error) {
+#ifdef __vita__
+  printf("error: %s\n", error);
+#else
   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, kWindowTitle, error, NULL);
   fprintf(stderr, "Error: %s\n", error);
+#endif
   exit(1);
 }
 
 void Warning(const char *error) {
+#ifdef __vita__
+  printf("warning: %s\n", error);
+#else
   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_WARNING, kWindowTitle, error, NULL);
   fprintf(stderr, "Warning: %s\n", error);
+#endif
 }
 
 static GamepadInfo *GetGamepadInfo(SDL_JoystickID id) {
@@ -251,7 +286,50 @@ static void SDLCALL AudioCallback(void *userdata, Uint8 *stream, int len) {
   SDL_UnlockMutex(g_audio_mutex);
 }
 
+#ifdef __vita__
+// State for vita2d renderer
+static SDL_Renderer *g_renderer;
+static SDL_Texture *g_texture;
+static SDL_Rect g_sdl_renderer_rect;
 
+static vita2d_texture *tex_buffers[4];
+static vita2d_texture *tex_buffer;
+static int tex_idx = 0;
+
+static bool Vita2DRenderer_Init(struct SDL_Window *window) {
+  vita2d_init();
+  vita2d_texture_set_alloc_memblock_type(SCE_KERNEL_MEMBLOCK_TYPE_USER_RW);
+  for (int i = 0; i < 4; i++) {
+    tex_buffers[i] = vita2d_create_empty_texture_format(g_snes_width, g_snes_height, SCE_GXM_TEXTURE_FORMAT_X8U8U8U8_1RGB);
+  }
+  return true;
+}
+
+static void Vita2DRenderer_Destroy(void) {
+}
+
+static void Vita2DRenderer_BeginDraw(int width, int height, uint8 **pixels, int *pitch) {
+  tex_buffer = tex_buffers[tex_idx];
+  *pixels = vita2d_texture_get_datap(tex_buffer);
+  *pitch = vita2d_texture_get_stride(tex_buffer);
+  tex_idx = (tex_idx + 1) % 4;
+}
+
+static void Vita2DRenderer_EndDraw(void) {
+  vita2d_start_drawing();
+  vita2d_draw_texture_scale(tex_buffer, 0, 0, 960.0f / (float)g_snes_width, 544.0f / (float)g_snes_height);
+  vita2d_end_drawing();
+  //vita2d_wait_rendering_done();
+  vita2d_swap_buffers();
+}
+
+static const struct RendererFuncs kVita2DRendererFuncs = {
+  &Vita2DRenderer_Init,
+  &Vita2DRenderer_Destroy,
+  &Vita2DRenderer_BeginDraw,
+  &Vita2DRenderer_EndDraw,
+};
+#else
 // State for sdl renderer
 static SDL_Renderer *g_renderer;
 static SDL_Texture *g_texture;
@@ -323,18 +401,25 @@ static const struct RendererFuncs kSdlRendererFuncs = {
   &SdlRenderer_BeginDraw,
   &SdlRenderer_EndDraw,
 };
-
+#endif
 
 void MkDir(const char *s) {
 #if defined(_WIN32)
   _mkdir(s);
 #else
-  mkdir(s, 0755);
+  mkdir(s, 0777);
 #endif
 }
 
 #undef main
 int main(int argc, char** argv) {
+#ifdef __vita__
+  scePowerSetArmClockFrequency(444);
+  scePowerSetBusClockFrequency(222);
+  scePowerSetGpuClockFrequency(222);
+  scePowerSetGpuXbarClockFrequency(166);
+  argc = 0;
+#endif
 #ifdef __SWITCH__
   SwitchImpl_Init();
 #endif
@@ -385,22 +470,30 @@ int main(int argc, char** argv) {
   SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 
   // set up SDL
+#ifdef __vita__
+  vita2d_init();
+  vita2d_texture_set_alloc_memblock_type(SCE_KERNEL_MEMBLOCK_TYPE_USER_RW);
+  if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
+#else
   if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
+#endif
     printf("Failed to init SDL: %s\n", SDL_GetError());
     return 1;
   }
-
   bool custom_size = g_config.window_width != 0 && g_config.window_height != 0;
   int window_width = custom_size ? g_config.window_width : g_current_window_scale * g_snes_width;
   int window_height = custom_size ? g_config.window_height : g_current_window_scale * g_snes_height;
-
+#ifndef __vita__
   if (g_config.output_method == kOutputMethod_OpenGL) {
     g_win_flags |= SDL_WINDOW_OPENGL;
     OpenGLRenderer_Create(&g_renderer_funcs);
   } else {
     g_renderer_funcs = kSdlRendererFuncs;
   }
-
+#else
+  g_renderer_funcs = kVita2DRendererFuncs;
+#endif
+#ifndef __vita__
   if (argv[0]) {
     size_t size;
     kRom = ReadWholeFile(argv[0], &size);
@@ -408,7 +501,7 @@ int main(int argc, char** argv) {
     if (!kRom)
       goto error_reading;
   }
-
+#endif
   Snes *snes = SnesInit(kRom, kRom_SIZE);
   if (snes == NULL) {
 error_reading:;
