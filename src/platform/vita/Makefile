@@ -1,4 +1,4 @@
-TARGET		:= smw
+TARGET		:= smworld
 TITLE	:= SPRMRWRLD
 SOURCES	:= ../.. ../../snes ../../../smb1 ../../../smbll
 
