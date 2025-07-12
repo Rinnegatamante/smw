@@ -16,3 +16,8 @@ smw_assets.dat
 __pycache__
 /enhanced/
 *.sfc
+*.vpk
+*.velf
+*.elf
+*.sfo
+*.bin
