@@ -38,23 +38,23 @@
 
 #ifdef __vita__
 long sysconf(int name) {
-	return 0;
+  return 0;
 }
 
 int _newlib_heap_size_user = 128 * 1024 * 1024;
 
 int __wrap_mkdir(const char *fname, mode_t mode) {
-	printf("mkdir %s\n", fname);
-	char patched_fname[256];
-	sprintf(patched_fname, "ux0:data/smworld/%s", fname);
-	return __real_mkdir(patched_fname, mode);
+  printf("mkdir %s\n", fname);
+  char patched_fname[256];
+  sprintf(patched_fname, "ux0:data/smworld/%s", fname);
+  return __real_mkdir(patched_fname, mode);
 }
 
 FILE *__wrap_fopen(char *fname, char *mode) {
-	printf("fopen %s\n", fname);
-	char patched_fname[256];
-	sprintf(patched_fname, "ux0:data/smworld/%s", fname);
-	return __real_fopen(patched_fname, mode);
+  printf("fopen %s\n", fname);
+  char patched_fname[256];
+  sprintf(patched_fname, "ux0:data/smworld/%s", fname);
+  return __real_fopen(patched_fname, mode);
 }
 #endif
 
@@ -88,10 +88,11 @@ bool g_new_ppu = true;
 bool g_other_image = true;
 struct SpcPlayer *g_spc_player;
 
-static uint8_t g_pixels[256 * 4 * 240];
 #ifndef __vita__
+static uint8_t g_pixels[256 * 4 * 240];
 static uint8_t g_my_pixels[256 * 4 * 240];
 #else
+  static uint8_t *g_pixels;
 static uint8_t *g_my_pixels;
 vita2d_texture *g_tex;
 #endif
@@ -317,9 +318,9 @@ static void Vita2DRenderer_BeginDraw(int width, int height, uint8 **pixels, int 
 static void Vita2DRenderer_EndDraw(void) {
   vita2d_start_drawing();
   if (g_config.ignore_aspect_ratio)
-	vita2d_draw_texture_scale(g_tex, 0, 0, 960.0f / (float)g_snes_width, 544.0f / (float)g_snes_height);
+    vita2d_draw_texture_scale(g_tex, 0, 0, 960.0f / (float)g_snes_width, 544.0f / (float)g_snes_height);
   else
-	vita2d_draw_texture_scale(g_tex, 170, 0, 2.42857f, 2.42857f);
+    vita2d_draw_texture_scale(g_tex, 170, 0, 2.42857f, 2.42857f);
   vita2d_end_drawing();
   //vita2d_wait_rendering_done();
   vita2d_swap_buffers();
@@ -419,11 +420,11 @@ void MkDir(const char *s) {
 #ifdef __vita__
 int vita_main (unsigned int argc, char **argv);
 int main(int argc, char** argv) {
-	SceUID main_thread = sceKernelCreateThread("SMWorld", vita_main, 0x40, 0x200000, 0, 0, NULL);
-	if (main_thread >= 0){
-		sceKernelStartThread(main_thread, 0, NULL);
-	}
-	return sceKernelExitDeleteThread(0);
+  SceUID main_thread = sceKernelCreateThread("SMWorld", vita_main, 0x40, 0x200000, 0, 0, NULL);
+  if (main_thread >= 0) {
+    sceKernelStartThread(main_thread, 0, NULL);
+  }
+  return sceKernelExitDeleteThread(0);
 }
 int vita_main (unsigned int argc, char **argv) {
 #else
@@ -573,7 +574,7 @@ error_reading:;
 
 #ifdef __vita__
   g_tex = vita2d_create_empty_texture_format(256, 240, SCE_GXM_TEXTURE_FORMAT_X8U8U8U8_1RGB);
-  g_my_pixels = vita2d_texture_get_datap(g_tex);
+  g_my_pixels = g_pixels = vita2d_texture_get_datap(g_tex);
 #endif
   PpuBeginDrawing(g_snes->ppu, g_pixels, 256 * 4, 0);
   PpuBeginDrawing(g_my_ppu, g_my_pixels, 256 * 4, 0);
