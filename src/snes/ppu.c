@@ -10,6 +10,9 @@
 #include "snes.h"
 #include "snes_regs.h"
 
+#ifdef __vita__
+#include <vitasdk.h>
+#endif
 
 extern bool g_new_ppu;
 void PpuDrawWholeLineOldPpu(Ppu *ppu, int line);
@@ -18,8 +21,36 @@ static void PpuDrawWholeLine(Ppu *ppu, uint y);
 static bool ppu_evaluateSprites(Ppu* ppu, int line);
 static uint16_t ppu_getVramRemap(Ppu* ppu);
 
+#ifdef __vita__
+// NOTE: This approach is used only in SMB1 and SMB:LL since SMW is already fullspeed without going this aggressive with optimization
+#define WORKER_THREADS_NUM (1)
+SceUID mutex_start[WORKER_THREADS_NUM], mutex_end[WORKER_THREADS_NUM], ppu_worker_threads[WORKER_THREADS_NUM] = {};
+int ids[WORKER_THREADS_NUM] = {0, 1, 2};
+
+extern Ppu *g_ppu;
+volatile int lines[WORKER_THREADS_NUM];
+int worker_queue_id = 0;
+int ppu_runLine_thread(unsigned int argc, int *argv) {
+  int idx = argv[0];
+  for (;;) {
+    sceKernelWaitSema(mutex_start[idx], 1, NULL);
+    ppu_runLine(g_ppu, lines[idx]);
+    sceKernelSignalSema(mutex_end[idx], 1);
+  }
+}
+#endif
 
 Ppu* ppu_init(void) {
+#ifdef __vita__
+  if (ppu_worker_threads[0] == 0) {
+    for (int i = 0; i < WORKER_THREADS_NUM; i++) {
+      mutex_start[i] = sceKernelCreateSema("Worker Start", 0, 0, 1, NULL);
+      mutex_end[i] = sceKernelCreateSema("Worker End", 0, 1, 1, NULL);
+      ppu_worker_threads[i] = sceKernelCreateThread("Worker Thread", &ppu_runLine_thread, 0x10000100, 0x100000, 0, 0, NULL);
+      sceKernelStartThread(ppu_worker_threads[i], sizeof(ids[i]), &ids[i]);
+    }
+  }
+#endif
   Ppu* ppu = malloc(sizeof(Ppu));
   return ppu;
 }
@@ -98,7 +129,6 @@ inline __attribute__((always_inline)) void ppu_runLine(Ppu* ppu, int line) {
       }
     }
 
-
     // pre-render line
     // TODO: this now happens halfway into the first line
     ppu->mosaicStartLine = 1;
@@ -128,6 +158,15 @@ inline __attribute__((always_inline)) void ppu_runLine(Ppu* ppu, int line) {
     }
   }
 }
+
+#ifdef __vita__
+void ppu_runLine_multithreaded(Ppu* ppu, int line) {
+  sceKernelWaitSema(mutex_end[worker_queue_id], 1, NULL);
+  lines[worker_queue_id] = line;
+  sceKernelSignalSema(mutex_start[worker_queue_id], 1);
+  worker_queue_id = (worker_queue_id + 1) % WORKER_THREADS_NUM;
+}
+#endif
 
 typedef struct PpuWindows {
   int16 edges[6];
@@ -616,7 +655,7 @@ static void PpuDrawSprites(Ppu *ppu, uint y, uint sub, bool clear_backdrop) {
   }
 }
 
-static void PpuDrawBackgrounds(Ppu *ppu, int y, bool sub) {
+static inline __attribute__((always_inline)) void PpuDrawBackgrounds(Ppu *ppu, int y, bool sub) {
   // Top 4 bits contain the prio level, and bottom 4 bits the layer type.
   // SPRITE_PRIO_TO_PRIO can be used to convert from obj prio to this prio.
   //  15: BG3 tiles with priority 1 if bit 3 of $2105 is set
@@ -664,7 +703,7 @@ static inline __attribute__((always_inline)) void PpuDrawWholeLine(Ppu *ppu, uin
   if (PPU_forcedBlank(ppu)) {
     uint8 *dst = &ppu->renderBuffer[(y - 1) * ppu->renderPitch];
     size_t n = sizeof(uint32) * (256 + ppu->extraLeftRight * 2);
-    memset(dst, 0, n);
+    //memset(dst, 0, n);
     return;
   }
 

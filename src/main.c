@@ -304,8 +304,6 @@ static vita2d_texture *tex_buffer;
 static int tex_idx = 0;
 
 static bool Vita2DRenderer_Init(struct SDL_Window *window) {
-  vita2d_init();
-  vita2d_texture_set_alloc_memblock_type(SCE_KERNEL_MEMBLOCK_TYPE_USER_RW);
   return true;
 }
 
@@ -443,6 +441,7 @@ int main(int argc, char** argv) {
   scePowerSetGpuClockFrequency(222);
   scePowerSetGpuXbarClockFrequency(166);
   vita2d_init();
+  vita2d_texture_set_alloc_memblock_type(SCE_KERNEL_MEMBLOCK_TYPE_USER_RW);
   argc = 1;
 
   // Launcher to chose which game to run
@@ -622,7 +621,6 @@ int main(int argc, char** argv) {
 
   // set up SDL
 #ifdef __vita__
-  vita2d_texture_set_alloc_memblock_type(SCE_KERNEL_MEMBLOCK_TYPE_USER_RW);
   if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
 #else
   if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {

@@ -101,6 +101,10 @@ void snes_reset(Snes* snes, bool hard) {
   snes->openBus = 0;
 }
 
+#ifdef __vita__
+extern void ppu_runLine_multithreaded(Ppu* ppu, int line);
+#endif
+
 void snes_handle_pos_stuff(Snes *snes) {
   // check for h/v timer irq's
   if (snes->vIrqEnabled && snes->hIrqEnabled) {
@@ -151,7 +155,11 @@ void snes_handle_pos_stuff(Snes *snes) {
   } else if (snes->hPos == 512) {
     // render the line halfway of the screen for better compatibility
     if (!snes->inVblank && !snes->disableRender) {
+#ifdef __vita__
+      ppu_runLine_multithreaded(g_ppu, snes->vPos);
+#else
       ppu_runLine(g_ppu, snes->vPos);
+#endif
     }
   } else if (snes->hPos == 1024) {
     // start of hblank
