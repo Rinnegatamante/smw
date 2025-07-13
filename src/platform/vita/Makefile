@@ -33,6 +33,7 @@ $(TARGET).vpk: $(TARGET).velf
 		--add bg.png=sce_sys/livearea/contents/bg.png \
 		--add startup.png=sce_sys/livearea/contents/startup.png \
 		--add template.xml=sce_sys/livearea/contents/template.xml \
+		--add bg_sel.png=bg_sel.png \
 		$(TARGET).vpk
 
 %.velf: %.elf

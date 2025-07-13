@@ -418,6 +418,13 @@ void MkDir(const char *s) {
 
 #undef main
 #ifdef __vita__
+enum {
+  SM_WORLD,
+  SM_ONE,
+  SM_LOST_LEVELS
+};
+int available_games[3] = {0, 0, 0};
+int num_available_games = 0;
 int vita_main (unsigned int argc, char **argv);
 int main(int argc, char** argv) {
   SceUID main_thread = sceKernelCreateThread("SMWorld", vita_main, 0x40, 0x200000, 0, 0, NULL);
@@ -435,7 +442,123 @@ int main(int argc, char** argv) {
   scePowerSetBusClockFrequency(222);
   scePowerSetGpuClockFrequency(222);
   scePowerSetGpuXbarClockFrequency(166);
+  vita2d_init();
   argc = 1;
+
+  // Launcher to chose which game to run
+  SceIoStat st;
+  int sel_idx = -1;
+  if (sceIoGetstat("ux0:data/smworld/smw_assets.dat", &st) >= 0) {
+    available_games[SM_WORLD] = 1;
+    num_available_games++;
+    sel_idx = SM_WORLD;
+  }
+  if (sceIoGetstat("ux0:data/smworld/smb1.sfc", &st) >= 0) {
+    available_games[SM_ONE] = 1;
+    num_available_games++;
+    if (sel_idx != SM_WORLD) {
+      sel_idx = SM_ONE;
+    }
+  }
+  if (sceIoGetstat("ux0:data/smworld/smbll.sfc", &st) >= 0) {
+    available_games[SM_LOST_LEVELS] = 1;
+    num_available_games++;
+    if (sel_idx != SM_WORLD) {
+      sel_idx = SM_LOST_LEVELS;
+    }
+  }
+  char rom_name[256];
+  char *to_boot = NULL;
+  vita2d_texture *bg = vita2d_load_PNG_file("app0:bg_sel.png");
+  uint8_t r = 0xFE;
+  uint8_t g = 0xA0;
+  uint8_t b = 0x20;
+  int r_asc = 0;
+  int g_asc = 1;
+  int b_asc = 0;
+  uint32_t oldpad = 0;
+  for (;;) {
+    SceCtrlData pad;
+    sceCtrlPeekBufferPositive(0, &pad, 1);
+    if ((pad.buttons & SCE_CTRL_LEFT) && !(oldpad & SCE_CTRL_LEFT)) {
+      sel_idx--;
+      if (sel_idx < SM_WORLD)
+        sel_idx = SM_LOST_LEVELS;
+    } else if ((pad.buttons & SCE_CTRL_RIGHT) && !(oldpad & SCE_CTRL_RIGHT)) {
+      sel_idx++;
+      if (sel_idx > SM_LOST_LEVELS)
+        sel_idx = SM_WORLD;
+    } else if ((pad.buttons & SCE_CTRL_CROSS) && !(oldpad & SCE_CTRL_CROSS)) {
+      if (sel_idx == SM_WORLD) {
+        break;
+      } else if (sel_idx == SM_ONE) {
+        strcpy(rom_name, "smb1.sfc");
+        to_boot = rom_name;
+        break;
+      } else if (sel_idx == SM_LOST_LEVELS) {
+        strcpy(rom_name, "smbll.sfc");
+        to_boot = rom_name;
+        break;
+      }
+    }
+    oldpad = pad.buttons;
+
+    uint32_t sel_col = RGBA8(r, g, b, 0xFF);
+    
+    #define handle_color(x, asc) \
+      if (asc) { \
+        x += 4; \
+        asc = x <= 0xF0; \
+      } else { \
+        x -= 4; \
+        asc = x < 0x08; \
+      }
+
+    handle_color(r, r_asc)
+    handle_color(g, g_asc)
+    handle_color(b, b_asc)
+
+    vita2d_start_drawing();
+    vita2d_draw_texture(bg, 0.0f, 0.0f);
+    
+    if (!available_games[SM_WORLD])
+      vita2d_draw_rectangle(57.0f, 146.0f, 260.0f, 230.0f, 0xFF000000);
+    if (!available_games[SM_ONE])
+      vita2d_draw_rectangle(352.0f, 146.0f, 260.0f, 230.0f, 0xFF000000);
+    if (!available_games[SM_LOST_LEVELS])
+      vita2d_draw_rectangle(640.0f, 146.0f, 260.0f, 230.0f, 0xFF000000);
+    
+    switch (sel_idx) {
+    case SM_WORLD:
+      vita2d_draw_rectangle(57.0f, 146.0f, 5.0f, 222.0f, sel_col); // Left
+      vita2d_draw_rectangle(57.0f + 254.0f, 146.0f, 5.0f, 227.0f, sel_col); // Right
+      vita2d_draw_rectangle(57.0f, 146.0f, 256.0f, 5.0f, sel_col); // Top
+      vita2d_draw_rectangle(57.0f, 222.0f + 146.0f, 256.0f, 5.0f, sel_col); // Down
+      break;
+    case SM_ONE:
+      vita2d_draw_rectangle(352.0f, 146.0f, 5.0f, 222.0f, sel_col); // Left
+      vita2d_draw_rectangle(352.0f + 254.0f, 146.0f, 5.0f, 227.0f, sel_col); // Right
+      vita2d_draw_rectangle(352.0f, 146.0f, 256.0f, 5.0f, sel_col); // Top
+      vita2d_draw_rectangle(352.0f, 222.0f + 146.0f, 256.0f, 5.0f, sel_col); // Down
+      break;
+    case SM_LOST_LEVELS:
+      vita2d_draw_rectangle(640.0f, 146.0f, 5.0f, 222.0f, sel_col); // Left
+      vita2d_draw_rectangle(640.0f + 254.0f, 146.0f, 5.0f, 227.0f, sel_col); // Right
+      vita2d_draw_rectangle(640.0f, 146.0f, 256.0f, 5.0f, sel_col); // Top
+      vita2d_draw_rectangle(640.0f, 222.0f + 146.0f, 256.0f, 5.0f, sel_col); // Down
+      break;
+    default:
+      break;
+    }
+    vita2d_end_drawing();
+    vita2d_swap_buffers();
+  }
+  for (int i = 0; i < 3; i++) {
+    vita2d_start_drawing();
+    vita2d_clear_screen();
+    vita2d_end_drawing();
+    vita2d_swap_buffers();
+  }
 #endif
 #ifdef __SWITCH__
   SwitchImpl_Init();
@@ -488,7 +611,6 @@ int main(int argc, char** argv) {
 
   // set up SDL
 #ifdef __vita__
-  vita2d_init();
   vita2d_texture_set_alloc_memblock_type(SCE_KERNEL_MEMBLOCK_TYPE_USER_RW);
   if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
 #else
@@ -517,6 +639,12 @@ int main(int argc, char** argv) {
     kRom_SIZE = (uint32)size;
     if (!kRom)
       goto error_reading;
+  }
+#else
+  if (to_boot) {
+    size_t size;
+    kRom = ReadWholeFile(to_boot, &size);
+    kRom_SIZE = (uint32)size;
   }
 #endif
   Snes *snes = SnesInit(kRom, kRom_SIZE);
