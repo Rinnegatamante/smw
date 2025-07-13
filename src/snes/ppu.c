@@ -25,7 +25,7 @@ static uint16_t ppu_getVramRemap(Ppu* ppu);
 // NOTE: This approach is used only in SMB1 and SMB:LL since SMW is already fullspeed without going this aggressive with optimization
 #define WORKER_THREADS_NUM (1)
 SceUID mutex_start[WORKER_THREADS_NUM], mutex_end[WORKER_THREADS_NUM], ppu_worker_threads[WORKER_THREADS_NUM] = {};
-int ids[WORKER_THREADS_NUM] = {0, 1, 2};
+int ids[3] = {0, 1, 2};
 
 extern Ppu *g_ppu;
 volatile int lines[WORKER_THREADS_NUM];
@@ -703,7 +703,7 @@ static inline __attribute__((always_inline)) void PpuDrawWholeLine(Ppu *ppu, uin
   if (PPU_forcedBlank(ppu)) {
     uint8 *dst = &ppu->renderBuffer[(y - 1) * ppu->renderPitch];
     size_t n = sizeof(uint32) * (256 + ppu->extraLeftRight * 2);
-    //memset(dst, 0, n);
+    memset(dst, 0, n);
     return;
   }
 
