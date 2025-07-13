@@ -413,14 +413,28 @@ void MkDir(const char *s) {
 #endif
 }
 
+
+
 #undef main
+#ifdef __vita__
+int vita_main (unsigned int argc, char **argv);
 int main(int argc, char** argv) {
+	SceUID main_thread = sceKernelCreateThread("SMWorld", vita_main, 0x40, 0x200000, 0, 0, NULL);
+	if (main_thread >= 0){
+		sceKernelStartThread(main_thread, 0, NULL);
+	}
+	return sceKernelExitDeleteThread(0);
+}
+int vita_main (unsigned int argc, char **argv) {
+#else
+int main(int argc, char** argv) {
+#endif
 #ifdef __vita__
   scePowerSetArmClockFrequency(444);
   scePowerSetBusClockFrequency(222);
   scePowerSetGpuClockFrequency(222);
   scePowerSetGpuXbarClockFrequency(166);
-  argc = 0;
+  argc = 1;
 #endif
 #ifdef __SWITCH__
   SwitchImpl_Init();
