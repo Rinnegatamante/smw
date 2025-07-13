@@ -741,6 +741,14 @@ error_reading:;
   while (running) {
     SDL_Event event;
 
+#ifdef __vita__
+    SceCtrlData pad;
+    sceCtrlPeekBufferPositive(0, &pad, 1);
+    if ((pad.buttons & SCE_CTRL_START) && (pad.buttons & SCE_CTRL_SELECT) && (pad.buttons & SCE_CTRL_LEFT)) {
+      sceAppMgrLoadExec("app0:eboot.bin", NULL, NULL);
+    }
+#endif
+
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
       case SDL_CONTROLLERDEVICEADDED:
