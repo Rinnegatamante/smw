@@ -559,6 +559,7 @@ int main(int argc, char** argv) {
     vita2d_end_drawing();
     vita2d_swap_buffers();
   }
+  vita2d_free_texture(bg);
 #endif
 #ifdef __SWITCH__
   SwitchImpl_Init();
