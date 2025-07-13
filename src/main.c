@@ -484,10 +484,20 @@ int main(int argc, char** argv) {
       sel_idx--;
       if (sel_idx < SM_WORLD)
         sel_idx = SM_LOST_LEVELS;
+      while (!available_games[sel_idx]) {
+        sel_idx--;
+        if (sel_idx < SM_WORLD)
+          sel_idx = SM_LOST_LEVELS;	  
+      }
     } else if ((pad.buttons & SCE_CTRL_RIGHT) && !(oldpad & SCE_CTRL_RIGHT)) {
       sel_idx++;
       if (sel_idx > SM_LOST_LEVELS)
         sel_idx = SM_WORLD;
+      while (!available_games[sel_idx]) {
+        sel_idx++;
+        if (sel_idx > SM_LOST_LEVELS)
+          sel_idx = SM_WORLD;		  
+      }
     } else if ((pad.buttons & SCE_CTRL_CROSS) && !(oldpad & SCE_CTRL_CROSS)) {
       if (sel_idx == SM_WORLD) {
         break;
