@@ -255,7 +255,7 @@ Snes *SnesInit(const uint8 *data, int data_size) {
   g_dma = g_snes->dma;
   g_use_my_apu_code = (g_runmode != RM_THEIRS);
 
-  if (data_size != 0 && g_runmode != RM_MINE) {
+  if (data_size != 0) {
     bool loaded = snes_loadRom(g_snes, data, data_size);
     if (!loaded) {
       return NULL;
