@@ -934,10 +934,12 @@ void BufferScrollingTiles_Layer2() {  // 058b8d
     R0_W = plo[r8] | plo[v6 + 0x10000] << 8;
     const uint16 *r10w = Lm_GetMap16RomAddr(R0_W);
     int v7 = v5 >> 1;
-    blocks_layer2_tiles_to_upload_buffer[v7] = R3_W | r10w[0];
-    blocks_layer2_tiles_to_upload_buffer[v7 + 1] = R3_W | r10w[1];
-    blocks_layer2_tiles_to_upload_buffer[v7 + 64] = R3_W | r10w[2];
-    blocks_layer2_tiles_to_upload_buffer[v7 + 65] = R3_W | r10w[3];
+    if (r10w) {
+        blocks_layer2_tiles_to_upload_buffer[v7] = R3_W | r10w[0];
+        blocks_layer2_tiles_to_upload_buffer[v7 + 1] = R3_W | r10w[1];
+        blocks_layer2_tiles_to_upload_buffer[v7 + 64] = R3_W | r10w[2];
+        blocks_layer2_tiles_to_upload_buffer[v7 + 65] = R3_W | r10w[3];
+    }
     v5 += 4;
     r8 += 16;
   } while (r8 < 0x1B0);
