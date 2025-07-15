@@ -317,6 +317,8 @@ static void Vita2DRenderer_EndDraw(void) {
   vita2d_start_drawing();
   if (g_config.ignore_aspect_ratio)
     vita2d_draw_texture_scale(g_tex, 0, 0, 960.0f / (float)g_snes_width, 544.0f / (float)g_snes_height);
+  else if (g_config.integer_scaling)
+    vita2d_draw_texture_scale(g_tex, 224, 48, 2.0f, 2.0f);
   else
     vita2d_draw_texture_scale(g_tex, 170, 0, 2.42857f, 2.42857f);
   vita2d_end_drawing();
