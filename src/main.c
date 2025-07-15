@@ -416,6 +416,8 @@ void MkDir(const char *s) {
 
 #undef main
 #ifdef __vita__
+enum RunMode { RM_BOTH, RM_MINE, RM_THEIRS };
+extern uint8 g_runmode;
 enum {
   SM_WORLD,
   SM_ONE,
@@ -499,6 +501,7 @@ int main(int argc, char** argv) {
       }
     } else if ((pad.buttons & SCE_CTRL_CROSS) && !(oldpad & SCE_CTRL_CROSS)) {
       if (sel_idx == SM_WORLD) {
+        g_runmode = RM_THEIRS; // FIXME: With RM_MINE, tunnels do freak out
         break;
       } else if (sel_idx == SM_ONE) {
         strcpy(rom_name, "smb1.sfc");
