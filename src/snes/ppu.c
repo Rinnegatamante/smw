@@ -30,7 +30,8 @@ int ids[3] = {0, 1, 2};
 extern Ppu *g_ppu;
 volatile int lines[WORKER_THREADS_NUM];
 int worker_queue_id = 0;
-int ppu_runLine_thread(unsigned int argc, int *argv) {
+int ppu_runLine_thread(unsigned int argc, void *argp) {
+  int *argv = argp;
   int idx = argv[0];
   for (;;) {
     sceKernelWaitSema(mutex_start[idx], 1, NULL);

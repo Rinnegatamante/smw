@@ -43,6 +43,9 @@ long sysconf(int name) {
 
 int _newlib_heap_size_user = 128 * 1024 * 1024;
 
+int __real_mkdir(const char *path, mode_t mode);
+FILE *__real_fopen(const char *path, const char *mode);
+
 int __wrap_mkdir(const char *fname, mode_t mode) {
   printf("mkdir %s\n", fname);
   char patched_fname[256];
@@ -427,7 +430,7 @@ enum {
 };
 int available_games[3] = {0, 0, 0};
 int num_available_games = 0;
-int vita_main (unsigned int argc, char **argv);
+int vita_main (unsigned int argc, void *argp);
 int main(int argc, char** argv) {
   SceUID main_thread = sceKernelCreateThread("SMWorld", vita_main, 0x40, 0x200000, 0, 0, NULL);
   if (main_thread >= 0) {
@@ -435,7 +438,8 @@ int main(int argc, char** argv) {
   }
   return sceKernelExitDeleteThread(0);
 }
-int vita_main (unsigned int argc, char **argv) {
+int vita_main (unsigned int argc, void *argp) {
+  char **argv = argp;
 #else
 int main(int argc, char** argv) {
 #endif
